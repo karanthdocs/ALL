@@ -1,0 +1,116 @@
+// ==UserScript==
+// @name         Sarathi FaceAuth Capture (Guaranteed Visible Panel)
+// @namespace    http://tampermonkey.net/
+// @version      2.0
+// @description  Guaranteed panel + captures saveFaceAuthData.do (200 OK)
+// @match        *://sarathi.parivahan.gov.in/*
+// @match        *://*.parivahan.gov.in/*
+// @all-frames   true
+// @grant        unsafeWindow
+// @run-at       document-start
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    const TARGET_URL = "saveFaceAuthData.do";
+
+    //---------------------------------------------------------
+    // FORCE PANEL TO EXIST ALWAYS (Angular-safe, iframe-safe)
+    //---------------------------------------------------------
+    function ensurePanel() {
+        if (document.getElementById("__faceauth_panel")) return;
+
+        const panel = document.createElement("div");
+        panel.id = "__faceauth_panel";
+        panel.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 450px;
+            max-height: 75vh;
+            overflow-y: auto;
+            background: #111;
+            color: #0f0;
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 999999999 !important;
+        `;
+
+        // CLOSE BUTTON
+        const close = document.createElement("div");
+        close.textContent = "✖";
+        close.style.cssText = `
+            position:absolute;
+            top:5px;
+            right:10px;
+            cursor:pointer;
+            color:#f44;
+            font-size:18px;
+            font-weight:bold;
+        `;
+        close.onclick = () => { panel.style.display = "none"; };
+        panel.appendChild(close);
+
+        // TITLE
+        const title = document.createElement("div");
+        title.innerHTML = "<b>FaceAuth Monitor (200 OK)</b><hr>";
+        title.style.marginTop = "20px";
+        panel.appendChild(title);
+
+        document.body.appendChild(panel);
+    }
+
+    // CHECK EVERY 500ms (Angular replaces DOM)
+    setInterval(() => {
+        if (document.body) ensurePanel();
+    }, 500);
+
+    //---------------------------------------------------------
+    // LOGGER
+    //---------------------------------------------------------
+    function log(text) {
+        const panel = document.getElementById("__faceauth_panel");
+        if (!panel) return;
+
+        const box = document.createElement("pre");
+        box.style.whiteSpace = "pre-wrap";
+        box.textContent = text;
+        panel.appendChild(box);
+    }
+
+    //---------------------------------------------------------
+    // INTERCEPT FETCH
+    //---------------------------------------------------------
+    const _fetch = unsafeWindow.fetch;
+    unsafeWindow.fetch = async function(...args) {
+        const url = args[0];
+        const res = await _fetch.apply(this, args);
+        const clone = res.clone();
+
+        if (url.includes(TARGET_URL) && res.status === 200) {
+            let body = "";
+            try { body = await clone.text(); } catch {}
+
+            log(`FETCH 200 OK\n${url}\n\n${body}`);
+        }
+        return res;
+    };
+
+    //---------------------------------------------------------
+    // INTERCEPT XHR
+    //---------------------------------------------------------
+    const XHR = unsafeWindow.XMLHttpRequest;
+    unsafeWindow.XMLHttpRequest = function() {
+        const xhr = new XHR();
+        xhr.addEventListener("load", function() {
+            if (xhr.responseURL.includes(TARGET_URL) && xhr.status === 200) {
+                log(`XHR 200 OK\n${xhr.responseURL}\n\n${xhr.responseText}`);
+            }
+        });
+        return xhr;
+    };
+
+})();
