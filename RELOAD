@@ -2,7 +2,7 @@
 // @name         Avoid Closing Tab
 // @version      0.2
 // @description  Preventing tab been closed by hitting Ctrl-W for specific websites.
-// @match        https://sarathi.parivahan.gov.in/sarathiservice/authenticat*
+// @match        https://sarathi.parivahan.gov.in/sarathiservice/*
 // @run-at       document-start
 // ==/UserScript==
 
