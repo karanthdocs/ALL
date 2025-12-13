@@ -1,0 +1,50 @@
+
+// ==UserScript==
+// @name         Sarathi Reload Fix (No Termination)
+// @namespace    http://tampermonkey.net/
+// @version      2.0
+// @description  Block "reload detected" popup and stop termination on Sarathi portal
+// @author       You
+// @match        *://sarathi.parivahan.gov.in/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // 1. Reload detected alert disable
+    window.alert = function(msg) {
+        if (msg && msg.toLowerCase().includes("reload detected")) {
+            console.log("🚫 Blocked reload alert:", msg);
+            return;
+        }
+        return;
+    };
+
+    // 2. Any termination functions ko neutralize karo
+    function neuter(name){
+        if (window[name] && typeof window[name] === "function") {
+            window[name] = function(){
+                console.log("🚫 Blocked termination function:", name);
+                return false;
+            };
+        }
+    }
+
+    // Regular interval pe check karte raho (agar JS late load ho)
+    setInterval(() => {
+        neuter("terminateOperation");
+        neuter("reloadDetected");
+        neuter("endSession");
+    }, 50);
+
+    // 3. Reload / Unload events ko bypass karo
+    window.addEventListener("beforeunload", function(e) {
+        e.stopImmediatePropagation();
+    }, true);
+
+    window.addEventListener("unload", function(e) {
+        e.stopImmediatePropagation();
+    }, true);
+
+})();
